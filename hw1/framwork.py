@@ -92,20 +92,17 @@ def calculate_color(delta: ti.f32) -> ti.i32:
 def compute_current_energy():  # Compute current energy
     current_energy[None] = 0
     n = num_particles[None]
-    # 重力势能
     for i in range(n):
+        # 重力势能
         current_energy[None] += -particle_mass * gravity[1] * x[i][1]
-    # 动能
-    for i in range(n):
+        # 动能
         current_energy[None] += 0.5 * particle_mass * v[i].norm() * v[i].norm()
-    # 弹性势能
-    for i in range(n):
+        # 弹性势能
         for j in range(i, n):  # 防止计算两次
             if rest_length[i, j] != 0:
                 x_ij = x[i] - x[j]
                 # 1/2 k x^2
-                current_energy[None] += 0.5 * spring_stiffness[None] * (x_ij.norm() - rest_length[i, j]) * (
-                        x_ij.norm() - rest_length[i, j])
+                current_energy[None] += 0.5 * spring_stiffness[None] * (x_ij.norm() - rest_length[i, j]) ** 2
 
 
 def init_mass_spring_system():
