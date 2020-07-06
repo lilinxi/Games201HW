@@ -1,0 +1,16 @@
+*.idea/
+*cmake-build-debug/
+*cmake-build*/
+*build/
+
+**/nohup.out
+**/output/
+**/log/
+*.log
+
+*venv/
+*/venv/
+*/.DS_Store
+
+*bin/
+
