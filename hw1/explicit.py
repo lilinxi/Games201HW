@@ -24,7 +24,8 @@ while True:
     if not paused[None]:
         for step in range(10):
             substep()
-            collide_with_ground()
             update_position()
+            collide_with_ground()
+            compute_damp_energy()
         compute_current_energy()
     process_output()

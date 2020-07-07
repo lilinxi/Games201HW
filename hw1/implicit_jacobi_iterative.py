@@ -45,8 +45,8 @@ def substep(iter_times=10):
         # print(f'iter {step}, residual={jacobi_residual():0.10f}')
 
     update_velocity()
-    collide_with_ground()
     update_position()
+    collide_with_ground()
 
 
 init_mass_spring_system()
@@ -57,6 +57,7 @@ while True:
     if not paused[None]:
         for step in range(10):
             substep(10)
+            compute_damp_energy()
         compute_current_energy()
 
     process_output()

@@ -32,6 +32,7 @@ gravity = [0, -9.8]  # 重力
 origin_energy = ti.var(ti.f32, shape=())  # 原始的能量，只有重力势能
 current_energy = ti.var(ti.f32, shape=())  # 现在的能量，重力势能+弹性势能+动能
 lost_energy = ti.var(ti.f32, shape=())  # 损失的能量，撞击地面损失的动能，转化为了热能
+damp_energy = ti.var(ti.f32, shape=())  # 损失的能量，阻尼损失的动能，转化为了热能
 
 
 @ti.kernel
@@ -66,9 +67,15 @@ def collide_with_ground():
 @ti.kernel
 def update_position():
     for i in range(num_particles[None]):
+        # print(1,x[i], v[i])
+        if x[i].y <= bottom_y:
+            print(x[i]) # 这个print去掉在我的电脑上隐式方法的就跑不了，未解之谜
+            v[i].y = 0
         # print(i, v[i])
         # print("b:",x[i])
+        # print(2,x[i], v[i])
         x[i] += v[i] * dt
+        # print(3,x[i], v[i])
         # print("f:",x[i])
 
 
@@ -103,6 +110,19 @@ def compute_current_energy():  # Compute current energy
                 x_ij = x[i] - x[j]
                 # 1/2 k x^2
                 current_energy[None] += 0.5 * spring_stiffness[None] * (x_ij.norm() - rest_length[i, j]) ** 2
+
+
+@ti.kernel
+def compute_damp_energy():
+    n = num_particles[None]
+    for i in range(n):
+        total_force = ti.Vector([0, 0])
+        for j in range(n):
+            if rest_length[i, j] != 0:
+                x_ij = x[i] - x[j]
+                v_ij = v[i] - v[j]
+                total_force += -damping[None] * x_ij.normalized() * v_ij * x_ij.normalized()  # damping
+        damp_energy[None] += abs(total_force.dot(v[i]) * dt)
 
 
 def init_mass_spring_system():
@@ -157,9 +177,12 @@ def process_output():
     gui.text(content=f'Origin energy {origin_energy[None]:.0f}', pos=(0, 0.75), color=0x0)
     gui.text(content=f'Current energy {current_energy[None]:.0f}', pos=(0, 0.70), color=0x0)
     gui.text(content=f'Lost energy {lost_energy[None]:.0f}', pos=(0, 0.65), color=0x0)
-    gui.text(content=f'Total energy {current_energy[None] + lost_energy[None]:.0f}', pos=(0, 0.60), color=0x0)
-    gui.text(content=f'Error energy {origin_energy[None] - current_energy[None] - lost_energy[None]:.0f}',
+    gui.text(content=f'Damp energy {damp_energy[None]:.0f}', pos=(0, 0.60), color=0x0)
+    gui.text(content=f'Total energy {current_energy[None] + lost_energy[None] + damp_energy[None]:.0f}',
              pos=(0, 0.55), color=0x0)
+    gui.text(
+        content=f'Error energy {origin_energy[None] - current_energy[None] - lost_energy[None] - damp_energy[None]:.0f}',
+        pos=(0, 0.50), color=0x0)
     gui.show()
 
 # @ti.kernel

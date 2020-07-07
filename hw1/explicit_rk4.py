@@ -62,5 +62,6 @@ while True:
             substep()
             collide_with_ground()
             # update_position() # rk4 已经计算了 new position
+            compute_damp_energy()
         compute_current_energy()
     process_output()
