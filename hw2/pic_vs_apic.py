@@ -75,6 +75,7 @@ def substep_PIC():
         v[p] = new_v
 
 
+# A Polynomial Particle-In-Cell Method (SIGGRAPH Asia 2017)
 @ti.kernel
 def substep_APIC():
     for p in x:
