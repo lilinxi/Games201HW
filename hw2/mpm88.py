@@ -1,7 +1,7 @@
 import taichi as ti
 import random
 
-ti.init(arch=ti.cpu)
+ti.init(arch=ti.opengl)
 
 dim = 2
 n_particles = 8192
@@ -13,6 +13,8 @@ p_vol = (dx * 0.5) ** 2
 p_rho = 1
 p_mass = p_vol * p_rho
 E = 400
+
+BCMode = ti.var(ti.i32, shape=())
 
 x = ti.Vector(dim, dt=ti.f32, shape=n_particles)
 v = ti.Vector(dim, dt=ti.f32, shape=n_particles)
@@ -44,15 +46,58 @@ def substep():
             inv_m = 1 / grid_m[i, j]
             grid_v[i, j] = inv_m * grid_v[i, j]
             grid_v[i, j][1] -= dt * 9.8
-            # 边界条件
-            if i < bound and grid_v[i, j][0] < 0:
-                grid_v[i, j][0] = 0
-            if i > n_grid - bound and grid_v[i, j][0] > 0:
-                grid_v[i, j][0] = 0
-            if j < bound and grid_v[i, j][1] < 0:
-                grid_v[i, j][1] = 0
-            if j > n_grid - bound and grid_v[i, j][1] > 0:
-                grid_v[i, j][1] = 0
+            # if i < bound and grid_v[i, j][0] < 0:
+            #     grid_v[i, j][0] = 0
+            # if i > n_grid - bound and grid_v[i, j][0] > 0:
+            #     grid_v[i, j][0] = 0
+            # if j < bound and grid_v[i, j][1] < 0:
+            #     grid_v[i, j][1] = 0
+            # if j > n_grid - bound and grid_v[i, j][1] > 0:
+            #     grid_v[i, j][1] = 0
+            # TODO 边界条件
+            if BCMode[None] == 1:  # TODO 1. sticky
+                if i < bound and grid_v[i, j][0] < 0:
+                    grid_v[i, j][0] = 0
+                if i > n_grid - bound and grid_v[i, j][0] > 0:
+                    grid_v[i, j][0] = 0
+                if j < bound and grid_v[i, j][1] < 0:
+                    grid_v[i, j][1] = 0
+                if j > n_grid - bound and grid_v[i, j][1] > 0:
+                    grid_v[i, j][1] = 0
+            elif BCMode[None] == 2:  # TODO 2. slip
+                if i < bound and grid_v[i, j][0] < 0:
+                    n = ti.Vector([1, 0])
+                    nv = grid_v[i, j].dot(n)
+                    grid_v[i, j] = grid_v[i, j] - n * nv
+                if i > n_grid - bound and grid_v[i, j][0] > 0:
+                    n = ti.Vector([-1, 0])
+                    nv = grid_v[i, j].dot(n)
+                    grid_v[i, j] = grid_v[i, j] - n * nv
+                if j < bound and grid_v[i, j][1] < 0:
+                    n = ti.Vector([0, 1])
+                    nv = grid_v[i, j].dot(n)
+                    grid_v[i, j] = grid_v[i, j] - n * nv
+                if j > n_grid - bound and grid_v[i, j][1] > 0:
+                    n = ti.Vector([0, -1])
+                    nv = grid_v[i, j].dot(n)
+                    grid_v[i, j] = grid_v[i, j] - n * nv
+            elif BCMode[None] == 3:  # TODO 3. separate
+                if i < bound and grid_v[i, j][0] < 0:
+                    n = ti.Vector([1, 0])
+                    nv = grid_v[i, j].dot(n)
+                    grid_v[i, j] = grid_v[i, j] - n * min(nv, 0)
+                if i > n_grid - bound and grid_v[i, j][0] > 0:
+                    n = ti.Vector([-1, 0])
+                    nv = grid_v[i, j].dot(n)
+                    grid_v[i, j] = grid_v[i, j] - n * min(nv, 0)
+                if j < bound and grid_v[i, j][1] < 0:
+                    n = ti.Vector([0, 1])
+                    nv = grid_v[i, j].dot(n)
+                    grid_v[i, j] = grid_v[i, j] - n * min(nv, 0)
+                if j > n_grid - bound and grid_v[i, j][1] > 0:
+                    n = ti.Vector([0, -1])
+                    nv = grid_v[i, j].dot(n)
+                    grid_v[i, j] = grid_v[i, j] - n * min(nv, 0)
 
     for p in x:
         base = (x[p] * inv_dx - 0.5).cast(int)
@@ -75,6 +120,12 @@ def substep():
         C[p] = new_C
 
 
+@ti.kernel
+def reset(mode: ti.i32):
+    BCMode[None] = mode
+
+
+reset(1)
 for i in range(n_particles):
     x[i] = [random.random() * 0.4 + 0.2, random.random() * 0.4 + 0.2]
     v[i] = [0, -1]
@@ -82,10 +133,23 @@ for i in range(n_particles):
 
 gui = ti.GUI("MPM88", (512, 512))
 for frame in range(20000):
+    if gui.get_event(ti.GUI.PRESS):
+        if gui.event.key == '1':
+            reset(1)
+        elif gui.event.key == '2':
+            reset(2)
+        elif gui.event.key == '3':
+            reset(3)
     for s in range(50):
         grid_v.fill([0, 0])
         grid_m.fill(0)
         substep()
     gui.clear(0x112F41)
     gui.circles(x.to_numpy(), radius=1.5, color=0x068587)
+    if BCMode[None] == 1:
+        gui.text('(BC)=sticky', pos=(0.05, 0.05))
+    elif BCMode[None] == 2:
+        gui.text('(BC)=slip', pos=(0.05, 0.05))
+    elif BCMode[None] == 3:
+        gui.text('(BC)=separate', pos=(0.05, 0.05))
     gui.show()
