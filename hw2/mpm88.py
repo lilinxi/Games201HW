@@ -102,9 +102,7 @@ def substep():
     for p in x:
         base = (x[p] * inv_dx - 0.5).cast(int)
         fx = x[p] * inv_dx - base.cast(float)
-        w = [
-            0.5 * (1.5 - fx) ** 2, 0.75 - (fx - 1.0) ** 2, 0.5 * (fx - 0.5) ** 2
-        ]
+        w = [0.5 * (1.5 - fx) ** 2, 0.75 - (fx - 1.0) ** 2, 0.5 * (fx - 0.5) ** 2]
         new_v = ti.Vector.zero(ti.f32, 2)
         new_C = ti.Matrix.zero(ti.f32, 2, 2)
         for i in ti.static(range(3)):
